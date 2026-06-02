@@ -1,0 +1,23 @@
+# Render.com blueprint — deploys the TradeSignal FastAPI dashboard.
+# Render reads this automatically when you create a "Blueprint" from your repo.
+services:
+  - type: web
+    name: tradesignal-dashboard
+    runtime: python
+    plan: free
+    # Build: install dependencies
+    buildCommand: "pip install -r requirements.txt"
+    # Start: run uvicorn on the port Render provides via $PORT
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.4"
+      # Your RapidAPI key — set the real value in the Render dashboard,
+      # NOT here (keeps it out of git). Marked sync:false so Render prompts you.
+      - key: RAPIDAPI_KEY
+        sync: false
+      - key: RAPIDAPI_HOST
+        value: crypto-signal-api.p.rapidapi.com
+      - key: USE_MOCK_FALLBACK
+        value: "true"

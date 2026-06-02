@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TradeSignal — Dashboard</title>
+<!--
+  Tailwind CDN works in a real browser. The <style> block below is an inline
+  fallback so the dashboard still renders beautifully inside sandboxed previews
+  that block external scripts.
+-->
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: radial-gradient(1200px 600px at 80% -10%, #14233f 0%, transparent 55%),
+                radial-gradient(900px 500px at -10% 110%, #0f2a24 0%, transparent 50%),
+                #0a0f1c;
+    color: #e2e8f0;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 48px; }
+
+  /* Header */
+  .topbar { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:26px; }
+  .brand { display:flex; align-items:center; gap:12px; }
+  .logo { width:42px; height:42px; border-radius:12px; display:grid; place-items:center;
+          background:linear-gradient(135deg,#10b981,#0ea5e9); font-size:22px; box-shadow:0 8px 24px rgba(16,185,129,.25); }
+  .brand h1 { font-size:20px; font-weight:700; margin:0; letter-spacing:-.02em; }
+  .brand h1 span { color:#34d399; }
+  .brand p { margin:2px 0 0; font-size:12.5px; color:#64748b; }
+  .live { display:flex; align-items:center; gap:8px; font-size:12.5px; color:#94a3b8;
+          background:rgba(148,163,184,.08); border:1px solid rgba(148,163,184,.15);
+          padding:8px 14px; border-radius:999px; }
+  .dot { width:8px; height:8px; border-radius:50%; background:#34d399; box-shadow:0 0 0 0 rgba(52,211,153,.6); animation:pulse 1.8s infinite; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(52,211,153,.5)} 70%{box-shadow:0 0 0 8px rgba(52,211,153,0)} 100%{box-shadow:0 0 0 0 rgba(52,211,153,0)} }
+
+  /* Stats */
+  .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:26px; }
+  .stat { background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.06);
+          border-radius:16px; padding:16px 18px; backdrop-filter:blur(8px); }
+  .stat .label { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:#64748b; }
+  .stat .value { font-size:24px; font-weight:700; margin-top:6px; letter-spacing:-.02em; }
+  .c-sky{color:#38bdf8} .c-green{color:#34d399} .c-red{color:#f87171} .c-amber{color:#fbbf24}
+
+  /* Card + toolbar */
+  .card { background:rgba(255,255,255,.022); border:1px solid rgba(255,255,255,.06);
+          border-radius:18px; overflow:hidden; backdrop-filter:blur(8px); }
+  .toolbar { display:flex; align-items:center; justify-content:space-between; gap:14px;
+             padding:18px 20px; border-bottom:1px solid rgba(255,255,255,.06); flex-wrap:wrap; }
+  .toolbar h2 { margin:0; font-size:15px; font-weight:650; }
+  .filters { display:flex; gap:6px; }
+  .chip { border:1px solid rgba(255,255,255,.1); background:transparent; color:#94a3b8;
+          font-size:12.5px; padding:7px 14px; border-radius:10px; cursor:pointer; transition:.15s; font-weight:550; }
+  .chip:hover { background:rgba(255,255,255,.05); color:#e2e8f0; }
+  .chip.active { background:#10b981; border-color:#10b981; color:#04140e; font-weight:700; }
+
+  /* Table */
+  .scroll { width:100%; overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; min-width:680px; }
+  thead th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.07em;
+             color:#64748b; font-weight:600; padding:14px 20px; background:rgba(255,255,255,.015); }
+  thead th.right, tbody td.right { text-align:right; }
+  tbody td { padding:16px 20px; border-top:1px solid rgba(255,255,255,.05); font-size:14px; vertical-align:middle; }
+  tbody tr { transition:background .15s; }
+  tbody tr:hover { background:rgba(56,189,248,.04); }
+
+  .asset { display:flex; align-items:center; gap:12px; }
+  .coin { width:34px; height:34px; border-radius:10px; display:grid; place-items:center;
+          font-size:12px; font-weight:800; color:#0a0f1c; flex-shrink:0; }
+  .asset .name { font-weight:650; }
+  .asset .pair { font-size:11.5px; color:#64748b; margin-top:1px; }
+
+  .price { font-variant-numeric:tabular-nums; font-weight:600; }
+  .chg { font-size:12px; margin-top:2px; font-variant-numeric:tabular-nums; }
+  .up{color:#34d399} .down{color:#f87171}
+
+  .signal { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700;
+            padding:5px 11px; border-radius:999px; }
+  .sig-buy { background:rgba(16,185,129,.14); color:#34d399; border:1px solid rgba(16,185,129,.25); }
+  .sig-sell { background:rgba(239,68,68,.13); color:#f87171; border:1px solid rgba(239,68,68,.25); }
+  .sig-neutral { background:rgba(148,163,184,.12); color:#cbd5e1; border:1px solid rgba(148,163,184,.22); }
+  .signal .pip { width:6px; height:6px; border-radius:50%; background:currentColor; }
+
+  .ind { font-variant-numeric:tabular-nums; font-weight:600; }
+  .bar { height:5px; width:104px; border-radius:999px; background:rgba(255,255,255,.08); margin-top:6px; overflow:hidden; }
+  .bar > i { display:block; height:100%; border-radius:999px; }
+  .time { color:#94a3b8; font-size:13px; font-variant-numeric:tabular-nums; }
+
+  footer { text-align:center; color:#475569; font-size:12px; margin-top:22px; }
+
+  @media (max-width:760px){
+    .stats { grid-template-columns:repeat(2,1fr); }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+
+    <!-- Header -->
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo">📈</div>
+        <div>
+          <h1>Trade<span>Signal</span></h1>
+          <p>Real-time market signals dashboard</p>
+        </div>
+      </div>
+      <div class="live"><span class="dot"></span> Live · Updated 12:42:08 UTC</div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat"><div class="label">Tracked Assets</div><div class="value c-sky">8</div></div>
+      <div class="stat"><div class="label">Buy Signals</div><div class="value c-green">4</div></div>
+      <div class="stat"><div class="label">Sell Signals</div><div class="value c-red">2</div></div>
+      <div class="stat"><div class="label">Avg. RSI</div><div class="value c-amber">54.6</div></div>
+    </div>
+
+    <!-- Table card -->
+    <div class="card">
+      <div class="toolbar">
+        <h2>Trading Signals</h2>
+        <div class="filters">
+          <button class="chip active">All</button>
+          <button class="chip">Buy</button>
+          <button class="chip">Sell</button>
+          <button class="chip">Neutral</button>
+        </div>
+      </div>
+
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Asset Name</th>
+              <th class="right">Current Price</th>
+              <th>Signal</th>
+              <th>Indicator Value</th>
+              <th class="right">Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- BTC -->
+            <tr>
+              <td>
+                <div class="asset">
+                  <div class="coin" style="background:linear-gradient(135deg,#f7931a,#ffb84d)">BTC</div>
+                  <div><div class="name">Bitcoin</div><div class="pair">BTC / USDT</div></div>
+                </div>
+              </td>
+              <td class="right"><div class="price">$64,210.50</div><div class="chg up">▲ 2.34%</div></td>
+              <td><span class="signal sig-buy"><span class="pip"></span> BUY</span></td>
+              <td>
+                <div class="ind">RSI 71.2</div>
+                <div class="bar"><i style="width:71%;background:linear-gradient(90deg,#0ea5e9,#34d399)"></i></div>
+              </td>
+              <td class="right time">12:41:55</td>
+            </tr>
+            <!-- ETH -->
+            <tr>
+              <td>
+                <div class="asset">
+                  <div class="coin" style="background:linear-gradient(135deg,#627eea,#a5b4fc)">ETH</div>
+                  <div><div class="name">Ethereum</div><div class="pair">ETH / USDT</div></div>
+                </div>
+              </td>
+              <td class="right"><div class="price">$3,382.18</div><div class="chg up">▲ 1.12%</div></td>
+              <td><span class="signal sig-buy"><span class="pip"></span> BUY</span></td>
+              <td>
+                <div class="ind">RSI 63.5</div>
+                <div class="bar"><i style="width:63%;background:linear-gradient(90deg,#0ea5e9,#34d399)"></i></div>
+              </td>
+              <td class="right time">12:41:50</td>
+            </tr>
+            <!-- SOL -->
+            <tr>
+              <td>
+                <div class="asset">
+                  <div class="coin" style="background:linear-gradient(135deg,#14f195,#9945ff)">SOL</div>
+                  <div><div class="name">Solana</div><div class="pair">SOL / USDT</div></div>
+                </div>
+              </td>
+              <td class="right"><div class="price">$151.74</div><div class="chg down">▼ 3.05%</div></td>
+              <td><span class="signal sig-sell"><span class="pip"></span> SELL</span></td>
+              <td>
+                <div class="ind">RSI 28.9</div>
+                <div class="bar"><i style="width:29%;background:linear-gradient(90deg,#f59e0b,#f87171)"></i></div>
+              </td>
+              <td class="right time">12:41:44</td>
+            </tr>
+            <!-- BNB -->
+            <tr>
+              <td>
+                <div class="asset">
+                  <div class="coin" style="background:linear-gradient(135deg,#f3ba2f,#fcd34d)">BNB</div>
+                  <div><div class="name">BNB</div><div class="pair">BNB / USDT</div></div>
+                </div>
+              </td>
+              <td class="right"><div class="price">$598.40</div><div class="chg up">▲ 0.42%</div></td>
+              <td><span class="signal sig-neutral"><span class="pip"></span> NEUTRAL</span></td>
+              <td>
+                <div class="ind">RSI 49.7</div>
+                <div class="bar"><i style="width:50%;background:linear-gradient(90deg,#64748b,#cbd5e1)"></i></div>
+              </td>
+              <td class="right time">12:41:38</td>
+            </tr>
+            <!-- XRP -->
+            <tr>
+              <td>
+                <div class="asset">
+                  <div class="coin" style="background:linear-gradient(135deg,#23292f,#5b6671);color:#fff">XRP</div>
+                  <div><div class="name">Ripple</div><div class="pair">XRP / USDT</div></div>
+                </div>
+              </td>
+              <td class="right"><div class="price">$0.5218</div><div class="chg up">▲ 4.81%</div></td>
+              <td><span class="signal sig-buy"><span class="pip"></span> BUY</span></td>
+              <td>
+                <div class="ind">RSI 68.0</div>
+                <div class="bar"><i style="width:68%;background:linear-gradient(90deg,#0ea5e9,#34d399)"></i></div>
+              </td>
+              <td class="right time">12:41:30</td>
+            </tr>
+            <!-- ADA -->
+            <tr>
+              <td>
+                <div class="asset">
+                  <div class="coin" style="background:linear-gradient(135deg,#0033ad,#3b82f6);color:#fff">ADA</div>
+                  <div><div class="name">Cardano</div><div class="pair">ADA / USDT</div></div>
+                </div>
+              </td>
+              <td class="right"><div class="price">$0.4475</div><div class="chg down">▼ 1.67%</div></td>
+              <td><span class="signal sig-neutral"><span class="pip"></span> NEUTRAL</span></td>
+              <td>
+                <div class="ind">RSI 52.3</div>
+                <div class="bar"><i style="width:52%;background:linear-gradient(90deg,#64748b,#cbd5e1)"></i></div>
+              </td>
+              <td class="right time">12:41:22</td>
+            </tr>
+            <!-- DOGE -->
+            <tr>
+              <td>
+                <div class="asset">
+                  <div class="coin" style="background:linear-gradient(135deg,#c2a633,#e8cd6b);color:#1a1500">DOGE</div>
+                  <div><div class="name">Dogecoin</div><div class="pair">DOGE / USDT</div></div>
+                </div>
+              </td>
+              <td class="right"><div class="price">$0.1234</div><div class="chg down">▼ 5.20%</div></td>
+              <td><span class="signal sig-sell"><span class="pip"></span> SELL</span></td>
+              <td>
+                <div class="ind">RSI 24.1</div>
+                <div class="bar"><i style="width:24%;background:linear-gradient(90deg,#f59e0b,#f87171)"></i></div>
+              </td>
+              <td class="right time">12:41:15</td>
+            </tr>
+            <!-- AVAX -->
+            <tr>
+              <td>
+                <div class="asset">
+                  <div class="coin" style="background:linear-gradient(135deg,#e84142,#fb7185);color:#fff">AVAX</div>
+                  <div><div class="name">Avalanche</div><div class="pair">AVAX / USDT</div></div>
+                </div>
+              </td>
+              <td class="right"><div class="price">$36.92</div><div class="chg up">▲ 0.88%</div></td>
+              <td><span class="signal sig-buy"><span class="pip"></span> BUY</span></td>
+              <td>
+                <div class="ind">RSI 61.4</div>
+                <div class="bar"><i style="width:61%;background:linear-gradient(90deg,#0ea5e9,#34d399)"></i></div>
+              </td>
+              <td class="right time">12:41:07</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <footer>TradeSignal · For educational use only — not financial advice.</footer>
+  </div>
+</body>
+</html>

@@ -1,0 +1,12 @@
+# Core
+fastapi>=0.115
+uvicorn[standard]>=0.30
+jinja2>=3.1
+pydantic>=2.7
+
+# Required for HTML <form> POST handling (Form(...))
+python-multipart>=0.0.9
+
+# Used to call the crypto-signal-api (RapidAPI) from the backend,
+# and also by fastapi.testclient.
+httpx>=0.27
