@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TradeSignal — Live Trading Signals</title>
+  <!-- Tailwind via CDN: works fully in a real browser. -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' };
+  </script>
+  <!-- Fallback inline styles so the page still looks decent if the CDN is blocked -->
+  <style>
+    body { background:#0b1120; color:#e2e8f0; font-family: ui-sans-serif, system-ui, sans-serif; }
+    .badge-buy { background:#064e3b; color:#6ee7b7; }
+    .badge-sell { background:#7f1d1d; color:#fca5a5; }
+    .badge-hold { background:#78350f; color:#fcd34d; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-200 min-h-screen">
+
+  <!-- Navbar -->
+  <header class="border-b border-slate-800 bg-slate-900/60 backdrop-blur sticky top-0 z-20">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-2xl">📈</span>
+        <h1 class="text-xl font-bold tracking-tight">Trade<span class="text-emerald-400">Signal</span></h1>
+      </div>
+      <a href="/docs" class="text-sm px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 transition">API Docs</a>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-8">
+
+    <!-- Stats -->
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      {% set cards = [
+        ("Total Signals", stats.total, "text-sky-400"),
+        ("Active", stats.active, "text-emerald-400"),
+        ("Buy / Sell", stats.buy ~ " / " ~ stats.sell, "text-violet-400"),
+        ("Avg Confidence", stats.avg_confidence ~ "%", "text-amber-400")
+      ] %}
+      {% for label, value, color in cards %}
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+        <p class="text-xs uppercase tracking-wide text-slate-500">{{ label }}</p>
+        <p class="text-2xl font-bold mt-1 {{ color }}">{{ value }}</p>
+      </div>
+      {% endfor %}
+    </section>
+
+    <div class="grid lg:grid-cols-3 gap-8">
+      <!-- Signals list -->
+      <section class="lg:col-span-2">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold">Latest Signals</h2>
+          <div class="flex gap-1 text-xs">
+            {% for f in ["ALL", "BUY", "SELL", "HOLD"] %}
+            <a href="{{ '/' if f == 'ALL' else '/?filter=' ~ f }}"
+               class="px-3 py-1.5 rounded-lg border transition
+               {{ 'bg-emerald-500 text-slate-900 border-emerald-500 font-semibold' if active_filter == f else 'border-slate-700 text-slate-400 hover:bg-slate-800' }}">
+              {{ f }}
+            </a>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          {% for s in signals %}
+          <article class="bg-slate-900 border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition">
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex items-center gap-3">
+                <span class="text-lg font-bold">{{ s.symbol }}</span>
+                {% set cls = 'badge-buy' if s.signal.value == 'BUY' else ('badge-sell' if s.signal.value == 'SELL' else 'badge-hold') %}
+                <span class="text-xs font-bold px-2.5 py-1 rounded-full {{ cls }}">{{ s.signal.value }}</span>
+              </div>
+              <form method="post" action="/signals/{{ s.id }}/delete">
+                <button class="text-slate-600 hover:text-red-400 text-sm" title="Delete">✕</button>
+              </form>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3 mt-4 text-sm">
+              <div><p class="text-slate-500 text-xs">Entry</p><p class="font-semibold">{{ s.entry }}</p></div>
+              <div><p class="text-slate-500 text-xs">Target</p><p class="font-semibold text-emerald-400">{{ s.target }}</p></div>
+              <div><p class="text-slate-500 text-xs">Stop Loss</p><p class="font-semibold text-red-400">{{ s.stop_loss }}</p></div>
+            </div>
+
+            <div class="mt-4">
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-500">Confidence</span><span>{{ s.confidence }}%</span>
+              </div>
+              <div class="h-2 rounded-full bg-slate-800 overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-sky-500 to-emerald-400" style="width: {{ s.confidence }}%"></div>
+              </div>
+            </div>
+
+            {% if s.note %}<p class="text-sm text-slate-400 mt-3">💬 {{ s.note }}</p>{% endif %}
+            <p class="text-xs text-slate-600 mt-2">{{ s.created_at.strftime('%Y-%m-%d %H:%M UTC') }}</p>
+          </article>
+          {% else %}
+          <p class="text-slate-500 text-center py-10">No signals yet. Add one →</p>
+          {% endfor %}
+        </div>
+      </section>
+
+      <!-- Add signal form -->
+      <aside class="lg:col-span-1">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 sticky top-24">
+          <h2 class="text-lg font-semibold mb-4">Add Signal</h2>
+          <form method="post" action="/signals/create" class="space-y-3 text-sm">
+            <div>
+              <label class="block text-slate-400 mb-1">Symbol</label>
+              <input name="symbol" required placeholder="BTC/USDT"
+                class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500" />
+            </div>
+            <div>
+              <label class="block text-slate-400 mb-1">Signal</label>
+              <select name="signal" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500">
+                <option value="BUY">BUY</option>
+                <option value="SELL">SELL</option>
+                <option value="HOLD">HOLD</option>
+              </select>
+            </div>
+            <div class="grid grid-cols-3 gap-2">
+              <div><label class="block text-slate-400 mb-1">Entry</label>
+                <input name="entry" type="number" step="any" required class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-2 focus:outline-none focus:border-emerald-500" /></div>
+              <div><label class="block text-slate-400 mb-1">Target</label>
+                <input name="target" type="number" step="any" required class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-2 focus:outline-none focus:border-emerald-500" /></div>
+              <div><label class="block text-slate-400 mb-1">Stop</label>
+                <input name="stop_loss" type="number" step="any" required class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-2 focus:outline-none focus:border-emerald-500" /></div>
+            </div>
+            <div>
+              <label class="block text-slate-400 mb-1">Confidence: <span id="confVal">50</span>%</label>
+              <input name="confidence" type="range" min="0" max="100" value="50" class="w-full accent-emerald-500"
+                oninput="document.getElementById('confVal').textContent=this.value" />
+            </div>
+            <div>
+              <label class="block text-slate-400 mb-1">Note (optional)</label>
+              <textarea name="note" rows="2" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500"></textarea>
+            </div>
+            <button class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-semibold rounded-lg py-2.5 transition">
+              + Add Signal
+            </button>
+          </form>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="border-t border-slate-800 mt-12 py-6 text-center text-xs text-slate-600">
+    <p>TradeSignal Starter — FastAPI + Tailwind. For educational use only. Not financial advice.</p>
+  </footer>
+</body>
+</html>
