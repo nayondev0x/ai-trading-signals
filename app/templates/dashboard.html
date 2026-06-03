@@ -1,1 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TradeSignal — Live Dashboard</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: radial-gradient(1200px 600px at 80% -10%, #14233f 0%, transparent 55%),
+                radial-gradient(900px 500px at -10% 110%, #0f2a24 0%, transparent 50%), #0a0f1c;
+    color:#e2e8f0; min-height:100vh; }
+  .wrap { max-width:1180px; margin:0 auto; padding:28px 20px 48px; }
+  .topbar { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:18px; }
+  .brand { display:flex; align-items:center; gap:12px; }
+  .logo { width:42px; height:42px; border-radius:12px; display:grid; place-items:center;
+          background:linear-gradient(135deg,#10b981,#0ea5e9); font-size:22px; box-shadow:0 8px 24px rgba(16,185,129,.25); }
+  .brand h1 { font-size:20px; font-weight:700; margin:0; letter-spacing:-.02em; }
+  .brand h1 span { color:#34d399; }
+  .brand p { margin:2px 0 0; font-size:12.5px; color:#64748b; }
+  .live { display:flex; align-items:center; gap:8px; font-size:12.5px; color:#94a3b8;
+          background:rgba(148,163,184,.08); border:1px solid rgba(148,163,184,.15); padding:8px 14px; border-radius:999px; }
+  .dot { width:8px; height:8px; border-radius:50%; background:#34d399; animation:pulse 1.8s infinite; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(52,211,153,.5)} 70%{box-shadow:0 0 0 8px rgba(52,211,153,0)} 100%{box-shadow:0 0 0 0 rgba(52,211,153,0)} }
 
+  .banner { display:none; align-items:center; gap:10px; font-size:13px; padding:11px 16px; border-radius:12px; margin-bottom:18px;
+            background:rgba(251,191,36,.1); border:1px solid rgba(251,191,36,.3); color:#fcd34d; }
+  .banner.show { display:flex; }
+
+  .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:26px; }
+  .stat { background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.06); border-radius:16px; padding:16px 18px; }
+  .stat .label { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:#64748b; }
+  .stat .value { font-size:24px; font-weight:700; margin-top:6px; letter-spacing:-.02em; }
+  .c-sky{color:#38bdf8} .c-green{color:#34d399} .c-red{color:#f87171} .c-amber{color:#fbbf24}
+
+  .card { background:rgba(255,255,255,.022); border:1px solid rgba(255,255,255,.06); border-radius:18px; overflow:hidden; }
+  .toolbar { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:18px 20px;
+             border-bottom:1px solid rgba(255,255,255,.06); flex-wrap:wrap; }
+  .toolbar h2 { margin:0; font-size:15px; font-weight:650; }
+  .filters { display:flex; gap:6px; }
+  .chip { border:1px solid rgba(255,255,255,.1); background:transparent; color:#94a3b8; font-size:12.5px;
+          padding:7px 14px; border-radius:10px; cursor:pointer; transition:.15s; font-weight:550; }
+  .chip:hover { background:rgba(255,255,255,.05); color:#e2e8f0; }
+  .chip.active { background:#10b981; border-color:#10b981; color:#04140e; font-weight:700; }
+  .refresh { border:1px solid rgba(255,255,255,.1); background:transparent; color:#94a3b8; font-size:12.5px;
+             padding:7px 12px; border-radius:10px; cursor:pointer; }
+  .refresh:hover { background:rgba(255,255,255,.05); color:#e2e8f0; }
+  .tf { display:flex; align-items:center; gap:7px; font-size:12px; color:#64748b; }
+  .tf select { background:#0f1830; color:#e2e8f0; border:1px solid rgba(255,255,255,.12);
+               border-radius:9px; padding:7px 9px; font-size:12.5px; cursor:pointer; }
+  .tf select:focus { outline:none; border-color:#10b981; }
+  /* Strength meter */
+  .str { display:flex; align-items:center; gap:8px; justify-content:flex-end; }
+  .str .pct { font-variant-numeric:tabular-nums; font-size:12.5px; font-weight:600; min-width:34px; text-align:right; }
+  .strbar { width:64px; height:6px; border-radius:999px; background:rgba(255,255,255,.08); overflow:hidden; }
+  .strbar > i { display:block; height:100%; border-radius:999px; }
+  .badge-kind { font-size:9.5px; font-weight:700; letter-spacing:.05em; padding:2px 6px; border-radius:6px;
+                margin-left:7px; vertical-align:middle; }
+  .k-crypto { background:rgba(56,189,248,.14); color:#7dd3fc; }
+  .k-stock { background:rgba(167,139,250,.16); color:#c4b5fd; }
+
+  .scroll { width:100%; overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; min-width:680px; }
+  thead th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:#64748b;
+             font-weight:600; padding:14px 20px; background:rgba(255,255,255,.015); }
+  thead th.right, tbody td.right { text-align:right; }
+  tbody td { padding:16px 20px; border-top:1px solid rgba(255,255,255,.05); font-size:14px; vertical-align:middle; }
+  tbody tr:hover { background:rgba(56,189,248,.04); }
+  .asset { display:flex; align-items:center; gap:12px; }
+  .coin { width:34px; height:34px; border-radius:10px; display:grid; place-items:center; font-size:11px;
+          font-weight:800; color:#0a0f1c; flex-shrink:0; background:linear-gradient(135deg,#38bdf8,#34d399); }
+  .asset .name { font-weight:650; }
+  .asset .pair { font-size:11.5px; color:#64748b; margin-top:1px; }
+  .price { font-variant-numeric:tabular-nums; font-weight:600; }
+  .chg { font-size:12px; margin-top:2px; font-variant-numeric:tabular-nums; }
+  .up{color:#34d399} .down{color:#f87171}
+  .signal { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700; padding:5px 11px; border-radius:999px; }
+  .sig-buy { background:rgba(16,185,129,.14); color:#34d399; border:1px solid rgba(16,185,129,.25); }
+  .sig-sell { background:rgba(239,68,68,.13); color:#f87171; border:1px solid rgba(239,68,68,.25); }
+  .sig-neutral { background:rgba(148,163,184,.12); color:#cbd5e1; border:1px solid rgba(148,163,184,.22); }
+  .signal .pip { width:6px; height:6px; border-radius:50%; background:currentColor; }
+  .ind { font-variant-numeric:tabular-nums; font-weight:600; }
+  .bar { height:5px; width:104px; border-radius:999px; background:rgba(255,255,255,.08); margin-top:6px; overflow:hidden; }
+  .bar > i { display:block; height:100%; border-radius:999px; }
+  .time { color:#94a3b8; font-size:13px; font-variant-numeric:tabular-nums; }
+  .muted { color:#64748b; text-align:center; padding:30px; }
+  footer { text-align:center; color:#475569; font-size:12px; margin-top:22px; }
+  @media (max-width:760px){ .stats { grid-template-columns:repeat(2,1fr); } }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo">📈</div>
+        <div>
+          <h1>Trade<span>Signal</span></h1>
+          <p>Live crypto signals · TradingView analysis</p>
+        </div>
+      </div>
+      <div class="live"><span class="dot"></span> <span id="updated">Connecting…</span></div>
+    </div>
+
+    <div id="banner" class="banner">
+      <span>⚠️</span><span id="bannerText"></span>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="label">Tracked Assets</div><div class="value c-sky" id="s-total">–</div></div>
+      <div class="stat"><div class="label">Buy Signals</div><div class="value c-green" id="s-buy">–</div></div>
+      <div class="stat"><div class="label">Sell Signals</div><div class="value c-red" id="s-sell">–</div></div>
+      <div class="stat"><div class="label">Avg. RSI</div><div class="value c-amber" id="s-rsi">–</div></div>
+    </div>
+
+    <div class="card">
+      <div class="toolbar">
+        <h2>Trading Signals</h2>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <!-- Asset type -->
+          <div class="filters" id="kindFilters">
+            <button class="chip active" data-k="ALL">All assets</button>
+            <button class="chip" data-k="crypto">Crypto</button>
+            <button class="chip" data-k="stock">Stocks</button>
+          </div>
+          <!-- Timeframe selector -->
+          <label class="tf">
+            <span>Timeframe</span>
+            <select id="tfSelect">
+              <option value="15m">15m</option>
+              <option value="1h">1h</option>
+              <option value="4h">4h</option>
+              <option value="1d" selected>1D</option>
+              <option value="1W">1W</option>
+              <option value="1M">1M</option>
+            </select>
+          </label>
+          <!-- Signal filter -->
+          <div class="filters" id="sigFilters">
+            <button class="chip active" data-f="ALL">All</button>
+            <button class="chip" data-f="BUY">Buy</button>
+            <button class="chip" data-f="SELL">Sell</button>
+            <button class="chip" data-f="NEUTRAL">Neutral</button>
+          </div>
+          <button class="refresh" id="refreshBtn">↻ Refresh</button>
+        </div>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Asset Name</th>
+              <th class="right">Current Price</th>
+              <th>Signal</th>
+              <th>Indicator Value</th>
+              <th class="right">Strength</th>
+              <th class="right">Time</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td colspan="6" class="muted">Loading live signals…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <footer>TradeSignal · Data from TradingView · For educational use only — not financial advice.</footer>
+  </div>
+
+<script>
+  let allRows = [];
+  let signalFilter = "ALL";   // ALL | BUY | SELL | NEUTRAL
+  let kindFilter = "ALL";     // ALL | crypto | stock
+  let interval = "1d";
+
+  const fmtPrice = (p) => p == null ? "—"
+    : "$" + Number(p).toLocaleString("en-US",
+        { minimumFractionDigits: p < 5 ? 4 : 2, maximumFractionDigits: p < 5 ? 4 : 2 });
+
+  const sigClass = (s) => s === "BUY" ? "sig-buy" : s === "SELL" ? "sig-sell" : "sig-neutral";
+
+  const rowKind = (r) => r.kind || ((r.pair || "").includes("/") ? "crypto" : "stock");
+
+  function strengthColor(signal, pct) {
+    if (signal === "BUY")  return "linear-gradient(90deg,#0ea5e9,#34d399)";
+    if (signal === "SELL") return "linear-gradient(90deg,#f59e0b,#f87171)";
+    return "linear-gradient(90deg,#64748b,#cbd5e1)";
+  }
+
+  function rowHTML(r) {
+    const change = r.change ?? 0;
+    const chgCls = change >= 0 ? "up" : "down";
+    const chgTxt = (change >= 0 ? "▲ " : "▼ ") + Math.abs(change).toFixed(2) + "%";
+    const rsi = r.rsi;
+    const rsiPct = rsi == null ? 0 : Math.max(0, Math.min(100, rsi));
+    const barColor = rsi == null ? "#64748b"
+      : rsi >= 60 ? "linear-gradient(90deg,#0ea5e9,#34d399)"
+      : rsi <= 35 ? "linear-gradient(90deg,#f59e0b,#f87171)"
+      : "linear-gradient(90deg,#64748b,#cbd5e1)";
+    const initials = (r.symbol || "").replace("USDT","").slice(0,4);
+    const kind = rowKind(r);
+    const kindBadge = kind === "stock"
+      ? `<span class="badge-kind k-stock">STOCK</span>`
+      : `<span class="badge-kind k-crypto">CRYPTO</span>`;
+    const strength = r.strength;
+    const strHTML = strength == null
+      ? `<span class="pct" style="color:#64748b">—</span>`
+      : `<div class="strbar"><i style="width:${strength}%;background:${strengthColor(r.signal, strength)}"></i></div>
+         <span class="pct">${strength}%</span>`;
+    return `<tr>
+      <td><div class="asset">
+        <div class="coin">${initials}</div>
+        <div><div class="name">${r.name || r.symbol}${kindBadge}</div><div class="pair">${r.pair || ""}</div></div>
+      </div></td>
+      <td class="right"><div class="price">${fmtPrice(r.price)}</div>
+        <div class="chg ${chgCls}">${chgTxt}</div></td>
+      <td>
+        <span class="signal ${sigClass(r.signal)}"><span class="pip"></span> ${r.signal}</span>
+        ${r.recommendation && r.recommendation !== r.signal ? `<div style="font-size:10.5px;color:#64748b;margin-top:4px;letter-spacing:.04em">${r.recommendation.replace("_"," ")}</div>` : ""}
+      </td>
+      <td><div class="ind">${rsi == null ? "RSI <span style='color:#64748b;font-weight:400'>—</span>" : "RSI " + rsi}</div>
+        <div class="bar"><i style="width:${rsiPct}%;background:${barColor}"></i></div></td>
+      <td class="right"><div class="str">${strHTML}</div></td>
+      <td class="right time">${r.time || ""}</td>
+    </tr>`;
+  }
+  function visibleRows() {
+    return allRows.filter(r =>
+      (kindFilter === "ALL" || rowKind(r) === kindFilter) &&
+      (signalFilter === "ALL" || r.signal === signalFilter)
+    );
+  }
+
+  function render() {
+    const tbody = document.getElementById("tbody");
+    const rows = visibleRows();
+    tbody.innerHTML = rows.length
+      ? rows.map(rowHTML).join("")
+      : `<tr><td colspan="6" class="muted">No matching signals.</td></tr>`;
+
+    // Stats reflect the current asset-type filter.
+    const scope = allRows.filter(r => kindFilter === "ALL" || rowKind(r) === kindFilter);
+    const buy = scope.filter(r => r.signal === "BUY").length;
+    const sell = scope.filter(r => r.signal === "SELL").length;
+    const rsis = scope.map(r => r.rsi).filter(v => v != null);
+    const avg = rsis.length ? (rsis.reduce((a,b)=>a+b,0)/rsis.length).toFixed(1) : "–";
+    document.getElementById("s-total").textContent = scope.length;
+    document.getElementById("s-buy").textContent = buy;
+    document.getElementById("s-sell").textContent = sell;
+    document.getElementById("s-rsi").textContent = avg;
+  }
+
+  async function load() {
+    try {
+      const res = await fetch("/api/market?interval=" + encodeURIComponent(interval));
+      const data = await res.json();
+      allRows = data.rows || [];
+      render();
+      document.getElementById("updated").textContent =
+        "Updated " + (data.meta?.updated || "") + " · " + interval;
+      const banner = document.getElementById("banner");
+      if (data.meta?.using_mock) {
+        banner.classList.add("show");
+        document.getElementById("bannerText").textContent =
+          "Some rows are demo data — a data host is temporarily unavailable" +
+          (data.meta?.note ? " (" + data.meta.note + ")" : "") +
+          ". Live data returns automatically.";
+      } else {
+        banner.classList.remove("show");
+      }
+    } catch (e) {
+      document.getElementById("tbody").innerHTML =
+        `<tr><td colspan="6" class="muted">Failed to load: ${e}</td></tr>`;
+    }
+  }
+
+  // Asset-type filter
+  document.querySelectorAll("#kindFilters .chip").forEach(c => c.addEventListener("click", () => {
+    document.querySelectorAll("#kindFilters .chip").forEach(x => x.classList.remove("active"));
+    c.classList.add("active");
+    kindFilter = c.dataset.k;
+    render();
+  }));
+  // Signal filter
+  document.querySelectorAll("#sigFilters .chip").forEach(c => c.addEventListener("click", () => {
+    document.querySelectorAll("#sigFilters .chip").forEach(x => x.classList.remove("active"));
+    c.classList.add("active");
+    signalFilter = c.dataset.f;
+    render();
+  }));
+  // Timeframe selector — triggers a fresh fetch
+  document.getElementById("tfSelect").addEventListener("change", (e) => {
+    interval = e.target.value;
+    document.getElementById("tbody").innerHTML =
+      `<tr><td colspan="6" class="muted">Loading ${interval} signals…</td></tr>`;
+    load();
+  });
+  document.getElementById("refreshBtn").addEventListener("click", load);
+
+  load();
+  setInterval(load, 30000); // auto-refresh every 30s
+</script>
+</body>
+</html>
